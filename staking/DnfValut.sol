@@ -824,7 +824,7 @@ contract ERC1155Holder is ERC1155Receiver {
     }
 }
 
-contract DNFValut is ERC1155Holder, Ownable{
+contract DNFVault is ERC1155Holder, Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -834,17 +834,17 @@ contract DNFValut is ERC1155Holder, Ownable{
     }
 
     struct RewardNft {
-      bool isReward;
-      bool isClaim;
+        bool isReward;
+        bool isClaim;
     }
 
     IERC20 public dnfToken;
     IERC1155 public nftToken;
 
-    uint constant TokenDecimals = 1e18;
+    uint256 constant TokenDecimals = 1e18;
     uint256 public duration;
-    uint256 public totalValueLocked;   // Total value locked
-    uint256 public totalReward;        // Total distributed reward
+    uint256 public totalValueLocked; // Total value locked
+    uint256 public totalReward; // Total distributed reward
     uint256 public rewardRate;
     uint256 public totalStaked;
 
@@ -858,31 +858,41 @@ contract DNFValut is ERC1155Holder, Ownable{
 
     /* ==================== EVENTS ==================== */
 
-    event Staked(address indexed user, uint256 amount,uint256 timestamp);
+    event Staked(address indexed user, uint256 amount, uint256 timestamp);
 
-    event Withdraw(address indexed user,uint256 idx,uint256 real);
+    event Withdraw(address indexed user, uint256 idx, uint256 real);
 
     event Claim(address indexed user, uint256 nftTokenId);
 
-
-    constructor (address _tokenAddress, uint256 _dayValue,uint256 _rewardRate, uint256 _totalReward,uint256 _totalValueLocked ,address _nftAddress,uint256 _nftTokenId,uint256 _dnfCount) {
+    constructor(
+        address _tokenAddress,
+        uint256 _dayValue,
+        uint256 _rewardRate,
+        uint256 _totalReward,
+        uint256 _totalValueLocked,
+        address _nftAddress,
+        uint256 _nftTokenId,
+        uint256 _dnfCount
+    ) {
         dnfToken = IERC20(_tokenAddress);
         nftToken = IERC1155(_nftAddress);
         nftTokenId = _nftTokenId;
         dnfCount = _dnfCount;
 
         duration = _dayValue * 1 minutes;
-        /* duration = _dayValue * 1 days; */
+        // duration = _dayValue * 1 days;
 
         rewardRate = _rewardRate;
         totalReward = _totalReward;
         totalValueLocked = _totalValueLocked;
-
     }
 
     function stake(uint256 amount) public {
         require(amount >= TokenDecimals, "Min stake 1e18");
-        require(totalValueLocked >= totalStaked + amount,"Max totalValueLocked");
+        require(
+            totalValueLocked >= totalStaked + amount,
+            "Max totalValueLocked"
+        );
 
         _totalSupply = _totalSupply.add(amount);
         totalStaked = totalStaked.add(amount);
@@ -894,13 +904,13 @@ contract DNFValut is ERC1155Holder, Ownable{
         si.stakeTime = block.timestamp;
         stakeList[msg.sender].push(si);
 
-        if(amount >= dnfCount){
-          RewardNft storage rNft = rewardNftList[msg.sender];
-          if(rNft.isReward != true){
-            rNft.isReward = true;
-            rNft.isClaim = false;
-            rewardNftList[msg.sender] = rNft;
-          }
+        if (amount >= dnfCount) {
+            RewardNft storage rNft = rewardNftList[msg.sender];
+            if (rNft.isReward != true) {
+                rNft.isReward = true;
+                rNft.isClaim = false;
+                rewardNftList[msg.sender] = rNft;
+            }
         }
 
         emit Staked(msg.sender, amount, si.stakeTime);
@@ -910,61 +920,86 @@ contract DNFValut is ERC1155Holder, Ownable{
         require(idx >= 0, "err idx");
 
         StakeInfo[] storage si = stakeList[msg.sender];
-        require(si.length>idx,"Not found idx");
+        require(si.length > idx, "Not found idx");
 
         uint256 amount = si[idx].stakeAmount;
         require(amount > 0, "Cannot withdraw 0");
 
-        require(block.timestamp >= si[idx].stakeTime.add(duration),"Not yet due");
+        require(
+            block.timestamp >= si[idx].stakeTime.add(duration),
+            "Not yet due"
+        );
 
         uint256 real = 0;
         // for (uint256 i = 0; i < si.length; ++i) {
-        if(si.length>idx && block.timestamp >= si[idx].stakeTime.add(duration) && si[idx].stakeAmount > 0){
-            uint256 reward = getReward(msg.sender,idx);
+        if (
+            si.length > idx &&
+            block.timestamp >= si[idx].stakeTime.add(duration) &&
+            si[idx].stakeAmount > 0
+        ) {
+            uint256 reward = getReward(msg.sender, idx);
             real = amount.add(reward);
 
-            require(balances()>=real,"amount exceeds balance");
-            require(amount>=reward,"reward exceeds amount");
+            require(balances() >= real, "amount exceeds balance");
+            require(amount >= reward, "reward exceeds amount");
 
-             si[idx].stakeAmount = 0;
-             _totalSupply = _totalSupply.sub(amount);
+            si[idx].stakeAmount = 0;
+            _totalSupply = _totalSupply.sub(amount);
 
             dnfToken.safeTransfer(msg.sender, real);
         }
         emit Withdraw(msg.sender, idx, real);
-
     }
 
-    function isRewardNft() public view returns(bool,bool) {
-      RewardNft storage rNft = rewardNftList[msg.sender];
-      return (rNft.isReward,rNft.isClaim);
+    function isRewardNft() public view returns (bool) {
+        RewardNft storage rNft = rewardNftList[msg.sender];
+        return rNft.isReward;
     }
 
-    function isRewardNftOf(address addr) public view returns(bool,bool) {
-      RewardNft storage rNft = rewardNftList[addr];
-      return (rNft.isReward,rNft.isClaim);
+    function isClaimNft() public view returns (bool) {
+        RewardNft storage rNft = rewardNftList[msg.sender];
+        return rNft.isClaim;
     }
 
+    function isRewardNftOf(address addr) public view returns (bool) {
+        RewardNft storage rNft = rewardNftList[addr];
+        return rNft.isReward;
+    }
+
+    function isisClaimNftOf(address addr) public view returns (bool) {
+        RewardNft storage rNft = rewardNftList[addr];
+        return rNft.isClaim;
+    }
 
     function claimNft() public {
-      require(balancesNft()>0,"Cannot claim ,balancesNft=0");
-      RewardNft storage rNft = rewardNftList[msg.sender];
-      require(rNft.isReward == true,"Not done");
-      require(rNft.isClaim == false,"Claim done");
+        require(balancesNft() > 0, "Cannot claim ,balancesNft=0");
+        RewardNft storage rNft = rewardNftList[msg.sender];
+        require(rNft.isReward == true, "Not done");
+        require(rNft.isClaim == false, "Claim done");
 
-      nftToken.safeTransferFrom(address(this),msg.sender,nftTokenId,1,"0x0");
-      rNft.isClaim = true;
-      emit Claim(msg.sender,nftTokenId);
+        nftToken.safeTransferFrom(
+            address(this),
+            msg.sender,
+            nftTokenId,
+            1,
+            "0x0"
+        );
+        rNft.isClaim = true;
+        emit Claim(msg.sender, nftTokenId);
     }
 
-    function getReward(address _addr , uint256 idx) public view returns (uint256) {
-        require(address(_addr)!= address(0));
+    function getReward(address _addr, uint256 idx)
+        public
+        view
+        returns (uint256)
+    {
+        require(address(_addr) != address(0));
 
         StakeInfo[] storage si = stakeList[_addr];
-        require(si.length>idx,"Not found idx");
+        require(si.length > idx, "Not found idx");
         uint256 amount = si[idx].stakeAmount;
 
-        if(amount > 0 ) {
+        if (amount > 0) {
             uint256 reward = rewardRate.mul(amount).div(TokenDecimals);
             return reward;
         }
@@ -972,28 +1007,34 @@ contract DNFValut is ERC1155Holder, Ownable{
         return 0;
     }
 
-    function realRewarded() public view returns(uint256) {
+    function realRewarded() public view returns (uint256) {
         return balances().sub(_totalSupply);
     }
 
     function getStakeInfoLength(address _addr) public view returns (uint256) {
-         return stakeList[_addr].length;
+        return stakeList[_addr].length;
     }
 
-    function getStakeInfo(address _addr,uint256 idx) public view returns (uint256,uint256) {
-         return (stakeList[_addr][idx].stakeAmount,stakeList[_addr][idx].stakeTime);
+    function getStakeInfo(address _addr, uint256 idx)
+        public
+        view
+        returns (uint256, uint256)
+    {
+        return (
+            stakeList[_addr][idx].stakeAmount,
+            stakeList[_addr][idx].stakeTime
+        );
     }
 
     function totalSupply() public view returns (uint256) {
         return _totalSupply;
     }
 
-    function balances() public view returns (uint256){
+    function balances() public view returns (uint256) {
         return dnfToken.balanceOf(address(this));
     }
 
-    function balancesNft() public view returns (uint256){
-        return nftToken.balanceOf(address(this),nftTokenId);
+    function balancesNft() public view returns (uint256) {
+        return nftToken.balanceOf(address(this), nftTokenId);
     }
-
 }
