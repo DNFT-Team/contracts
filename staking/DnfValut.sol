@@ -879,8 +879,8 @@ contract DNFVault is ERC1155Holder, Ownable {
         nftTokenId = _nftTokenId;
         dnfCount = _dnfCount;
 
-        duration = _dayValue * 1 minutes;
-        // duration = _dayValue * 1 days;
+        // duration = _dayValue * 1 minutes;
+        duration = _dayValue * 1 days;
 
         rewardRate = _rewardRate;
         totalReward = _totalReward;
@@ -951,22 +951,22 @@ contract DNFVault is ERC1155Holder, Ownable {
         emit Withdraw(msg.sender, idx, real);
     }
 
-    function isRewardNft() public view returns (bool) {
-        RewardNft storage rNft = rewardNftList[msg.sender];
-        return rNft.isReward;
-    }
+    // function isRewardNft() public view returns (bool) {
+    //     RewardNft storage rNft = rewardNftList[msg.sender];
+    //     return rNft.isReward;
+    // }
 
-    function isClaimNft() public view returns (bool) {
-        RewardNft storage rNft = rewardNftList[msg.sender];
-        return rNft.isClaim;
-    }
+    // function isClaimNft() public view returns (bool) {
+    //     RewardNft storage rNft = rewardNftList[msg.sender];
+    //     return rNft.isClaim;
+    // }
 
     function isRewardNftOf(address addr) public view returns (bool) {
         RewardNft storage rNft = rewardNftList[addr];
         return rNft.isReward;
     }
 
-    function isisClaimNftOf(address addr) public view returns (bool) {
+    function isClaimNftOf(address addr) public view returns (bool) {
         RewardNft storage rNft = rewardNftList[addr];
         return rNft.isClaim;
     }
@@ -1036,5 +1036,21 @@ contract DNFVault is ERC1155Holder, Ownable {
 
     function balancesNft() public view returns (uint256) {
         return nftToken.balanceOf(address(this), nftTokenId);
+    }
+
+    function withdrawDnftOfOwner() external onlyOwner {
+        require(balances() > 0, "Cannot withdrawDnftOfOwner ,balances=0");
+        dnfToken.safeTransferFrom(address(this), owner(), balances());
+    }
+
+    function withdrawNftOfOwner() external onlyOwner {
+        require(balancesNft() > 0, "Cannot withdrawNftOfOwner ,balancesNft=0");
+        nftToken.safeTransferFrom(
+            address(this),
+            owner(),
+            nftTokenId,
+            balancesNft(),
+            "0x0"
+        );
     }
 }
